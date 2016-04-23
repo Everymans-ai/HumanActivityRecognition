@@ -1,0 +1,54 @@
+---
+title: "Practical Machine Learning Project"
+author: "George Polzer"
+date: "April 18, 2016"
+output: html_document
+---
+
+Data:
+
+I read in the data, removed the first, second, and fifth columns of training and testing (it is the ID, name, and timestamp columns), and created a partition in the training data so that I could use 20% of it to estimate error
+
+```{r}
+library(caret)
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!",""))
+testing <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!",""))
+
+testing<- testing[,-c(1,2,5)] #remove id,name, and timestamp
+training <- training[,-c(1,2,5)] #remove id,name, and timestamp
+
+train <- training[, colSums(is.na(training)) == 0] #keeps only complete columns
+test <- testing[, colSums(is.na(testing)) == 0] #keeps only complete columns
+
+nzv <- nearZeroVar(train, saveMetrics=TRUE) #finds zero variance predictors
+train <- train[,nzv$nzv==FALSE] #removes zero variance predictors
+
+validation <- createDataPartition(train$classe, p=0.2, list=FALSE) #splits 20% of the data into a partition
+validationTest <-train[validation, ] #creates validation test set
+validationTrain <-train[-validation,] #creates validation training set
+
+clean <- colnames(train[, -56])  # remove the classe column
+test<- test[clean]   #only allow columns we are training on in the test set
+```
+
+Model Building (I used a Random Forest)
+
+```{r}
+library(randomForest)
+rf <- randomForest(classe ~ ., data=validationTrain) #creates RandomForest
+predictions <- predict(rf, validationTest, type = "class") #predictions
+confusionMatrix(predictions, validationTest$classe) #confusion matrix
+```
+
+Accuracy 99.9%
+
+Outputting Predictions (I rebuilt the model using the ENTIRE training set):
+
+```{r}
+FullRFModel <-randomForest(classe ~ ., data=train) #RandomForest with ENTIRE data 
+FinalPredictions <- predict(FullRFModel, test, type = "class") #predictions
+FinalPredictions #confusion matrix
+```
